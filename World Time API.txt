@@ -1,0 +1,29 @@
+World Time API
+
++ Free
++ Provide List of all timezones
+
+- No Stability, No Up Time Guranteed
+- Rate limiting applied, rate limit not mentioned in document
+- to get the region time need to hit api for each region
+- Commercial use is not recommended as per the document
+
+
+TimeApi
+
++ Good documentation
++ wide range of apis for different usecases
++ 99.99% uptime as per their documentation
++ <1ms Response Time
++ Free For use
+
+- rate limit of 250M request per month
+
+
+http://worldclockapi.com/
+
+- Home Page of this website not loading 503 error worried about further reliability
+
+WorldTime
+
+- Does not provide list of all timeZones
