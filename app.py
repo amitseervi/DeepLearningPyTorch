@@ -30,7 +30,7 @@ def fit(num_epochs,model,loss_fn,opt,dataloader):
 if(needTraining):
   fit(100,model=model,loss_fn=loss_fn,opt=optimizer,dataloader=train_dl)
   torch.save(model.state_dict(),"trained_model.txt")      
-input_x = 1.
-input_y = 3.
+input_x = 11.
+input_y = 2.
 preds = model(torch.tensor([input_x,input_y],dtype=torch.float32)).flatten()
 print(round(preds.item()))
