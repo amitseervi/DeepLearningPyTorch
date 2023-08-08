@@ -16,24 +16,57 @@ import time
 TensorToImageTransform=visionTransform.ToPILImage(mode="L")
 dataset = MNIST('./data',download=False,transform=visionTransform.ToTensor())
 test_dataset = MNIST('./data',train=False,transform=visionTransform.ToTensor())
-
+batch_size=1024
 train_ds,val_ds = random_split(dataset=dataset,lengths=[50000,10000])
-train_dl = DataLoader(train_ds,batch_size=128,shuffle=True)
-val_dl = DataLoader(val_ds,batch_size=128,shuffle=False)
+train_dl = DataLoader(train_ds,batch_size=batch_size,shuffle=True,num_workers=8,pin_memory=True)
+val_dl = DataLoader(val_ds,batch_size=batch_size,shuffle=False,num_workers=8,pin_memory=True)
 
 input_size=28*28
+hidden_size = 32
 output_size=10
 
+def getDefaultDevice():
+    if torch.cuda.is_available():
+        return torch.device('cuda')
+    else:
+        return torch.device('cpu')
+    return torch.device('cpu')
+
+def to_device(data,device):
+    if isinstance(data,(list,tuple)):
+        return [to_device(x,device) for x in data]
+    return data.to(device,non_blocking=True)
+
+class DeviceDataLoader():
+    def __init__(self,dl,device) -> None:
+        self.dl=dl
+        self.device=device
+    
+    def __iter__(self):
+        for b in self.dl:
+            yield to_device(b,self.device)
+
+    def __len__(self):
+        return len(self.dl)
+
+device = getDefaultDevice()
+train_dl = DeviceDataLoader(train_dl,device)
+val_dl = DeviceDataLoader(val_dl,device)
+
+
 class MnistModel(nn.Module):
-    def __init__(self, input_size:int,output_size:int,lossFn,accuracyFn) -> None:
+    def __init__(self, input_size:int,hidden_size:int,output_size:int,lossFn,accuracyFn) -> None:
         super().__init__()
-        self.linear = nn.Linear(input_size,output_size)
+        self.linear = nn.Linear(input_size,hidden_size)
+        self.linear2 = nn.Linear(hidden_size,output_size)
         self.lossFn =lossFn
         self.accuracyFn = accuracyFn
     
     def forward(self,inputBatch:Tensor):
-        inputBatch=inputBatch.reshape(-1,784)
+        inputBatch=inputBatch.view(inputBatch.size(0),-1)
         out = self.linear(inputBatch)
+        out = F.relu(out)
+        out = self.linear2(out)
         out = F.softmax(out,dim=1)
         return out
     
@@ -49,7 +82,7 @@ class MnistModel(nn.Module):
         loss = self.lossFn(preds,labels)
         acc = self.accuracyFn(preds,labels)
         return {
-            'val_loss':loss,
+            'val_loss':loss.detach(),
             'val_acc':acc
         }
     def validation_epoch_end(self,outputs):
@@ -68,11 +101,12 @@ def accuracy(outputs:Tensor,labels:[int]):
     # How Many Labels predicted correctly / length of total items
     return torch.tensor(torch.sum(predIndex==labels).item()/len(predIndex))
 
-model = MnistModel(input_size,output_size,F.cross_entropy,accuracy)
+model = MnistModel(input_size,hidden_size,output_size,F.cross_entropy,accuracy)
 
 def loadModel(model:MnistModel):
     if os.path.exists("./store/model.pth"):
         model.load_state_dict(torch.load("./store/model.pth"))
+    to_device(model,device)
 
 def saveModel(model:MnistModel):
     if(not os.path.exists("./store")):
@@ -102,8 +136,9 @@ def fit(epochs,lr,model,train_dl,validation_dl,opt_fn = torch.optim.SGD):
     saveModel(model)
     return history
 
-
-result = fit(10,0.001,model,train_dl,val_dl)
+startTime = time.time()
+result = fit(10,0.5,model,train_dl,val_dl)
+print("Total Time = {}".format(time.time()-startTime))
 
 def testRandom():
     random.seed(time.time()*1000)
@@ -126,4 +161,4 @@ def testAll():
         correct+=torch.argmax(preds).item()==lable
     print("Test Score = {:.2f}%".format((correct/len(test_dataset))*100))
 
-testAll()
+# testRandom()
