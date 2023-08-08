@@ -103,7 +103,7 @@ def fit(epochs,lr,model,train_dl,validation_dl,opt_fn = torch.optim.SGD):
     return history
 
 
-result = fit(0,0.001,model,train_dl,val_dl)
+result = fit(10,0.001,model,train_dl,val_dl)
 
 def testRandom():
     random.seed(time.time()*1000)
@@ -111,11 +111,19 @@ def testRandom():
     random_test_index = random.randint(0,test_ds_len)
     image,label = test_dataset[random_test_index]
     testInput = image.unsqueeze(0)
-    print(testInput.shape)
     preds = model(testInput)
-    print(preds)
+    print(torch.argmax(preds))
+    print("Should Predict {}".format(label))
     plt.imshow(TensorToImageTransform(image))
     plt.show()
-    print(torch.argmax(preds))
 
-testRandom()
+# testRandom()
+
+def testAll():
+    correct=0
+    for images,lable in test_dataset:
+        preds = model(images.unsqueeze(0))
+        correct+=torch.argmax(preds).item()==lable
+    print("Test Score = {:.2f}%".format((correct/len(test_dataset))*100))
+
+testAll()
