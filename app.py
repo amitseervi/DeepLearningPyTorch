@@ -11,7 +11,9 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 import os
-
+import random
+import time
+TensorToImageTransform=visionTransform.ToPILImage(mode="L")
 dataset = MNIST('./data',download=False,transform=visionTransform.ToTensor())
 test_dataset = MNIST('./data',train=False,transform=visionTransform.ToTensor())
 
@@ -101,5 +103,19 @@ def fit(epochs,lr,model,train_dl,validation_dl,opt_fn = torch.optim.SGD):
     return history
 
 
-result = fit(5,0.001,model,train_dl,val_dl)
+result = fit(0,0.001,model,train_dl,val_dl)
 
+def testRandom():
+    random.seed(time.time()*1000)
+    test_ds_len = len(test_dataset)
+    random_test_index = random.randint(0,test_ds_len)
+    image,label = test_dataset[random_test_index]
+    testInput = image.unsqueeze(0)
+    print(testInput.shape)
+    preds = model(testInput)
+    print(preds)
+    plt.imshow(TensorToImageTransform(image))
+    plt.show()
+    print(torch.argmax(preds))
+
+testRandom()
