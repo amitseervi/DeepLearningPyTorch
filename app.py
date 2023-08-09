@@ -2,6 +2,7 @@ import torch
 import numpy
 import pandas
 from torch import Tensor
+from torch import tensor
 import torchvision
 import torchvision.transforms as visionTransform
 from torchvision.datasets import MNIST
@@ -20,6 +21,7 @@ batch_size=1024
 train_ds,val_ds = random_split(dataset=dataset,lengths=[50000,10000])
 train_dl = DataLoader(train_ds,batch_size=batch_size,shuffle=True,num_workers=8,pin_memory=True)
 val_dl = DataLoader(val_ds,batch_size=batch_size,shuffle=False,num_workers=8,pin_memory=True)
+test_dl = DataLoader(test_dataset)
 
 input_size=28*28
 hidden_size = 32
@@ -52,7 +54,7 @@ class DeviceDataLoader():
 device = getDefaultDevice()
 train_dl = DeviceDataLoader(train_dl,device)
 val_dl = DeviceDataLoader(val_dl,device)
-
+test_dl = DeviceDataLoader(test_dl,device)
 
 class MnistModel(nn.Module):
     def __init__(self, input_size:int,hidden_size:int,output_size:int,lossFn,accuracyFn) -> None:
@@ -63,6 +65,7 @@ class MnistModel(nn.Module):
         self.accuracyFn = accuracyFn
     
     def forward(self,inputBatch:Tensor):
+        print(inputBatch.shape)
         inputBatch=inputBatch.view(inputBatch.size(0),-1)
         out = self.linear(inputBatch)
         out = F.relu(out)
@@ -137,7 +140,7 @@ def fit(epochs,lr,model,train_dl,validation_dl,opt_fn = torch.optim.SGD):
     return history
 
 startTime = time.time()
-result = fit(10,0.5,model,train_dl,val_dl)
+result = fit(0,0.5,model,train_dl,val_dl)
 print("Total Time = {}".format(time.time()-startTime))
 
 def testRandom():
@@ -155,10 +158,11 @@ def testRandom():
 # testRandom()
 
 def testAll():
-    correct=0
-    for images,lable in test_dataset:
+    correct=tensor([0],device=device)
+    for images,lable in test_dl:
         preds = model(images.unsqueeze(0))
         correct+=torch.argmax(preds).item()==lable
-    print("Test Score = {:.2f}%".format((correct/len(test_dataset))*100))
+    print("Test Score = {:.2f}%".format((correct.detach().item()/len(test_dl))*100))
 
 # testRandom()
+testAll()
